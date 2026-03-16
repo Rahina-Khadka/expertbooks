@@ -22,6 +22,14 @@ const userService = {
   },
 
   /**
+   * Get expert public profile by ID
+   */
+  getExpertProfile: async (expertId) => {
+    const response = await api.get(`/experts/${expertId}`);
+    return response.data;
+  },
+
+  /**
    * Convert a File object to a base64 data URL
    */
   fileToBase64: (file) =>

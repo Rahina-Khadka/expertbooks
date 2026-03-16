@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import authService from '../services/authService';
+import api from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -8,22 +9,33 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // sessionStorage is cleared when the browser tab/window is closed or
-    // when the dev server restarts and the page reloads fresh.
-    // If 'session_alive' is not set, this is a brand-new session → force logout.
     const isAlive = sessionStorage.getItem('session_alive');
     if (!isAlive) {
-      // New session — clear any persisted auth
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       setLoading(false);
       return;
     }
 
-    // Session is alive (user navigated within the same tab session)
-    const currentUser = authService.getCurrentUser();
-    setUser(currentUser);
-    setLoading(false);
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    // Verify token + get fresh user data from API
+    api.get('/users/profile')
+      .then(res => {
+        const fresh = { ...authService.getCurrentUser(), ...res.data };
+        localStorage.setItem('user', JSON.stringify(fresh));
+        setUser(fresh);
+      })
+      .catch(() => {
+        // Token invalid — fall back to cached user
+        const cached = authService.getCurrentUser();
+        setUser(cached);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const login = async (credentials) => {

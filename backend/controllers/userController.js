@@ -48,6 +48,7 @@ const updateProfile = async (req, res) => {
           user.documents = { ...user.documents.toObject?.() || user.documents, ...req.body.documents };
         }
         if (req.body.portfolio !== undefined) user.portfolio = req.body.portfolio;
+        if (req.body.paymentQR !== undefined) user.paymentQR = req.body.paymentQR;
       }
 
       const updatedUser = await user.save();

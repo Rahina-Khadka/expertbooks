@@ -145,9 +145,86 @@ const deleteBooking = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Learner marks payment as done (uploads optional proof)
+ * @route   POST /api/bookings/:id/payment-done
+ * @access  Private (user)
+ */
+const markPaymentDone = async (req, res) => {
+  try {
+    const { paymentProof } = req.body;
+    const booking = await Booking.findById(req.params.id)
+      .populate('userId', 'name email')
+      .populate('expertId', 'name email');
+
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.userId._id.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    booking.paymentStatus = 'payment_pending';
+    booking.status = 'payment_pending';
+    if (paymentProof) booking.paymentProof = paymentProof;
+    await booking.save();
+
+    // Notify expert
+    await NotificationService.createNotification(
+      booking.expertId._id,
+      'booking_confirmed',
+      '💳 Payment Received — Please Confirm',
+      `${booking.userId.name} has marked payment as done for their session. Please verify and confirm.`,
+      booking._id,
+      '/bookings'
+    );
+
+    res.json(booking);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * @desc    Expert confirms payment received
+ * @route   POST /api/bookings/:id/confirm-payment
+ * @access  Private (expert)
+ */
+const confirmPayment = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id)
+      .populate('userId', 'name email')
+      .populate('expertId', 'name email');
+
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.expertId._id.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    booking.paymentStatus = 'paid';
+    booking.status = 'completed';
+    booking.paymentConfirmedAt = new Date();
+    await booking.save();
+
+    // Notify learner
+    await NotificationService.createNotification(
+      booking.userId._id,
+      'booking_confirmed',
+      '✅ Payment Confirmed',
+      `${booking.expertId.name} has confirmed your payment. Session is now complete.`,
+      booking._id,
+      '/bookings'
+    );
+
+    res.json(booking);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   createBooking,
   getBookings,
   updateBookingStatus,
-  deleteBooking
+  deleteBooking,
+  markPaymentDone,
+  confirmPayment
 };

@@ -15,6 +15,7 @@ import SessionRoomPage from './pages/SessionRoomPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import GoogleAuthSuccessPage from './pages/GoogleAuthSuccessPage';
+import PendingVerificationPage from './pages/PendingVerificationPage';
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/admin/login" element={<AdminLoginPage />} />
           <Route path="/auth/google/success" element={<GoogleAuthSuccessPage />} />
+          <Route path="/pending-verification" element={<PendingVerificationPage />} />
 
           {/* User dashboard */}
           <Route path="/dashboard" element={

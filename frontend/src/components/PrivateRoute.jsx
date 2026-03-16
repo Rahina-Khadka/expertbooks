@@ -3,9 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 
 /**
  * PrivateRoute — protects routes by auth + optional role check.
- * Props:
- *   roles?: string[]  — if provided, user must have one of these roles
- *   redirectTo?: string — where to send unauthorized users (default: /login)
+ * Also blocks unverified/rejected experts from accessing any protected page.
  */
 const PrivateRoute = ({ children, roles, redirectTo = '/login' }) => {
   const { isAuthenticated, user, loading } = useAuth();
@@ -20,8 +18,12 @@ const PrivateRoute = ({ children, roles, redirectTo = '/login' }) => {
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
 
+  // Block experts who are not yet approved
+  if (user?.role === 'expert' && user?.verificationStatus !== 'approved') {
+    return <Navigate to="/pending-verification" replace />;
+  }
+
   if (roles && !roles.includes(user?.role)) {
-    // Redirect to the right dashboard for their role
     const roleHome = { user: '/dashboard', expert: '/expert-dashboard', admin: '/admin' };
     return <Navigate to={roleHome[user?.role] || '/'} replace />;
   }

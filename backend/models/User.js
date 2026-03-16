@@ -99,7 +99,13 @@ const userSchema = new mongoose.Schema({
     skills: [{ type: String, trim: true }],
     link: { type: String, trim: true },
     image: { type: String, default: '' }
-  }]
+  }],
+  // Payment QR code for experts
+  paymentQR: {
+    image: { type: String, default: '' },       // base64 QR image
+    platform: { type: String, default: '' },    // eSewa / Khalti / Bank QR
+    accountName: { type: String, default: '' }  // display name on payment card
+  }
 }, {
   timestamps: true
 });

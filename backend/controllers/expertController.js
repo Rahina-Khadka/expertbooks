@@ -23,7 +23,7 @@ const getExperts = async (req, res) => {
     }
 
     const experts = await User.find(query)
-      .select('name email expertise rating totalRatings bio availability profilePicture hourlyRate isOnline verificationStatus portfolio');
+      .select('name email expertise rating totalRatings bio availability profilePicture hourlyRate isOnline verificationStatus portfolio paymentQR');
 
     res.json(experts);
   } catch (error) {
@@ -42,7 +42,7 @@ const getExpertById = async (req, res) => {
       _id: req.params.id, 
       role: 'expert',
       verificationStatus: 'approved'
-    }).select('name email expertise rating totalRatings bio availability profilePicture hourlyRate isOnline verificationStatus portfolio');
+    }).select('name email expertise rating totalRatings bio availability profilePicture hourlyRate isOnline verificationStatus portfolio paymentQR');
 
     if (expert) {
       res.json(expert);

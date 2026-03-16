@@ -108,6 +108,7 @@ const login = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        verificationStatus: user.verificationStatus,
         token: token
       });
     } else {

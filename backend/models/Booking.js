@@ -29,7 +29,7 @@ const bookingSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'confirmed', 'rejected', 'cancelled', 'completed'],
+    enum: ['pending', 'confirmed', 'rejected', 'cancelled', 'completed', 'payment_pending', 'paid'],
     default: 'pending'
   },
   topic: {
@@ -39,6 +39,23 @@ const bookingSchema = new mongoose.Schema({
   notes: {
     type: String,
     trim: true
+  },
+  // Payment fields
+  sessionPrice: {
+    type: Number,
+    default: 0
+  },
+  paymentStatus: {
+    type: String,
+    enum: ['unpaid', 'payment_pending', 'paid'],
+    default: 'unpaid'
+  },
+  paymentProof: {
+    type: String,  // base64 screenshot uploaded by learner
+    default: ''
+  },
+  paymentConfirmedAt: {
+    type: Date
   }
 }, {
   timestamps: true

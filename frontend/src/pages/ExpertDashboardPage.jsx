@@ -17,6 +17,8 @@ const statusColors = {
   rejected: 'bg-red-100 text-red-700',
   cancelled: 'bg-gray-100 text-gray-500',
   completed: 'bg-blue-100 text-blue-700',
+  payment_pending: 'bg-orange-100 text-orange-700',
+  paid: 'bg-emerald-100 text-emerald-700',
 };
 
 const Modal = ({ title, onClose, children }) => (
@@ -49,6 +51,8 @@ const ExpertDashboardPage = () => {
   const [portfolioForm, setPortfolioForm] = useState(EMPTY_PROJECT);
   const [editingPortfolioIdx, setEditingPortfolioIdx] = useState(null);
   const portfolioImgRef = useRef(null);
+  const [paymentQR, setPaymentQR] = useState({ image: '', platform: '', accountName: '' });
+  const qrImgRef = useRef(null);
 
   useEffect(() => { load(); }, []);
 
@@ -66,6 +70,7 @@ const ExpertDashboardPage = () => {
       setForm({ name: p.name||'', phone: p.phone||'', bio: p.bio||'', expertise: p.expertise||[], profilePicture: p.profilePicture||'', hourlyRate: p.hourlyRate||0, isOnline: p.isOnline||false });
       setAvatarPreview(p.profilePicture || null);
       setPortfolio(p.portfolio || []);
+      setPaymentQR(p.paymentQR || { image: '', platform: '', accountName: '' });
       if (p.availability?.length > 0) {
         setAvailability(DAYS.map(day => {
           const s = p.availability.find(a => a.day === day);
@@ -113,6 +118,20 @@ const ExpertDashboardPage = () => {
     if (!file) return;
     const b64 = await userService.fileToBase64(file);
     setPortfolioForm(p => ({ ...p, image: b64 }));
+  };
+
+  const handleQRUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const b64 = await userService.fileToBase64(file);
+    setPaymentQR(p => ({ ...p, image: b64 }));
+  };
+
+  const handleSavePaymentQR = async () => {
+    try {
+      await userService.updateProfile({ ...form, paymentQR });
+      setActiveModal(null);
+    } catch (e) { alert('Failed to save payment QR'); }
   };
 
   const openAddPortfolio = () => { setPortfolioForm(EMPTY_PROJECT); setEditingPortfolioIdx(null); setActiveModal('portfolio'); };
@@ -226,6 +245,7 @@ const ExpertDashboardPage = () => {
             { icon:'📅', label:'Manage Availability', desc:'Set your schedule', color:'bg-green-500', action: () => setActiveModal('schedule') },
             { icon:'💰', label:'Earnings', desc:`$${earnings} total`, color:'bg-blue-500', action: () => setActiveModal('earnings') },
             { icon:'⭐', label:'Reviews', desc:`${reviews.length} reviews`, color:'bg-purple-500', action: () => setActiveModal('reviews') },
+            { icon:'💳', label:'Payment QR', desc: paymentQR?.image ? 'QR uploaded' : 'Setup QR code', color:'bg-pink-500', action: () => setActiveModal('paymentQR') },
           ].map(c => (
             <button key={c.label} onClick={c.action}
               className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 text-left hover:shadow-md transition-all group">
@@ -575,6 +595,48 @@ const ExpertDashboardPage = () => {
                   Cancel
                 </button>
               </div>
+            </div>
+          </Modal>
+        )}
+
+        {/* Payment QR Modal */}
+        {activeModal === 'paymentQR' && (
+          <Modal title="💳 Payment QR Code" onClose={() => setActiveModal(null)}>
+            <p className="text-sm text-gray-500 mb-5">Upload your QR code so learners can pay you after sessions.</p>
+            <div className="flex flex-col items-center mb-5">
+              <div onClick={() => qrImgRef.current?.click()}
+                className="w-48 h-48 border-2 border-dashed border-indigo-300 rounded-2xl flex items-center justify-center cursor-pointer hover:border-indigo-500 transition-colors overflow-hidden bg-gray-50">
+                {paymentQR.image
+                  ? <img src={paymentQR.image} alt="QR" className="w-full h-full object-contain" />
+                  : <div className="text-center text-gray-400"><div className="text-4xl mb-1">📷</div><p className="text-xs">Click to upload QR</p></div>}
+              </div>
+              <input ref={qrImgRef} type="file" accept="image/*" onChange={handleQRUpload} className="hidden" />
+              <button type="button" onClick={() => qrImgRef.current?.click()} className="mt-2 text-sm text-indigo-600 hover:underline">
+                {paymentQR.image ? 'Change QR Image' : 'Upload QR Image'}
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Platform</label>
+                <select value={paymentQR.platform} onChange={e => setPaymentQR(p => ({ ...p, platform: e.target.value }))}
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none text-sm">
+                  <option value="">Select platform</option>
+                  <option value="eSewa">eSewa</option>
+                  <option value="Khalti">Khalti</option>
+                  <option value="Bank QR">Bank QR</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Account Name / Number</label>
+                <input type="text" value={paymentQR.accountName} onChange={e => setPaymentQR(p => ({ ...p, accountName: e.target.value }))}
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none text-sm"
+                  placeholder="e.g. Rahina Khadka / 98XXXXXXXX" />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={handleSavePaymentQR} className="flex-1 bg-indigo-500 text-white py-2.5 rounded-xl font-semibold hover:bg-indigo-600 transition-colors">Save QR</button>
+              <button onClick={() => setActiveModal(null)} className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-200 transition-colors">Cancel</button>
             </div>
           </Modal>
         )}

@@ -319,40 +319,64 @@ const AdminDashboardPage = () => {
 
         {/* Bookings Tab */}
         {activeTab === 'bookings' && (
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Expert</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {bookings.map((booking) => (
-                  <tr key={booking._id}>
-                    <td className="px-6 py-4 whitespace-nowrap">{booking.userId?.name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{booking.expertId?.name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {new Date(booking.date).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">{booking.startTime}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        booking.status === 'completed' ? 'bg-green-100 text-green-800' :
-                        booking.status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
-                        booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {booking.status}
-                      </span>
-                    </td>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+              <h2 className="font-bold text-gray-900">All Bookings</h2>
+              <span className="text-xs text-gray-400">{bookings.length} total</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-100">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Learner</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Expert</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Date</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Payment</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Proof</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {bookings.map((booking) => (
+                    <tr key={booking._id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-5 py-3 text-sm text-gray-900">{booking.userId?.name}</td>
+                      <td className="px-5 py-3 text-sm text-gray-900">{booking.expertId?.name}</td>
+                      <td className="px-5 py-3 text-sm text-gray-500">
+                        {new Date(booking.date).toLocaleDateString()} · {booking.startTime}
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                          booking.status === 'completed' || booking.status === 'paid' ? 'bg-green-100 text-green-700' :
+                          booking.status === 'confirmed' ? 'bg-blue-100 text-blue-700' :
+                          booking.status === 'payment_pending' ? 'bg-orange-100 text-orange-700' :
+                          booking.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-gray-100 text-gray-500'
+                        }`}>
+                          {booking.status?.replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                          booking.paymentStatus === 'paid' ? 'bg-emerald-100 text-emerald-700' :
+                          booking.paymentStatus === 'payment_pending' ? 'bg-orange-100 text-orange-700' :
+                          'bg-gray-100 text-gray-400'
+                        }`}>
+                          {booking.paymentStatus || 'unpaid'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3">
+                        {booking.paymentProof ? (
+                          <button onClick={() => setDocViewer({ expert: { name: booking.userId?.name, documents: { paymentProof: booking.paymentProof } }, docKey: 'paymentProof', label: 'Payment Proof' })}
+                            className="text-xs text-indigo-600 hover:underline font-medium">
+                            View Proof
+                          </button>
+                        ) : <span className="text-xs text-gray-300">—</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../hooks/useAuth';
 import useWebRTC from '../hooks/useWebRTC';
 import Navbar from '../components/Navbar';
 import socketService from '../services/socketService';
 import messageService from '../services/messageService';
 import bookingService from '../services/bookingService';
+import userService from '../services/userService';
 
 const SessionRoomPage = () => {
   const { bookingId } = useParams();
@@ -18,6 +20,13 @@ const SessionRoomPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isOtherUserOnline, setIsOtherUserOnline] = useState(false);
+  const [sessionEnded, setSessionEnded] = useState(false);
+  const [expertProfile, setExpertProfile] = useState(null);
+  const [paymentProof, setPaymentProof] = useState('');
+  const [paymentSubmitting, setPaymentSubmitting] = useState(false);
+  const [paymentDone, setPaymentDone] = useState(false);
+  const [confirmingPayment, setConfirmingPayment] = useState(false);
+  const paymentProofRef = useRef(null);
 
   const messagesEndRef = useRef(null);
   const localVideoRef = useRef(null);
@@ -109,6 +118,20 @@ const SessionRoomPage = () => {
 
       setBooking(currentBooking);
 
+      // Fetch expert profile for QR code
+      try {
+        const ep = await userService.getExpertProfile(currentBooking.expertId._id);
+        setExpertProfile(ep);
+      } catch (_) {}
+
+      // If booking is already in payment state, show payment UI
+      if (['payment_pending', 'paid', 'completed'].includes(currentBooking.status)) {
+        setSessionEnded(true);
+        if (currentBooking.paymentStatus === 'payment_pending' || currentBooking.paymentStatus === 'paid') {
+          setPaymentDone(true);
+        }
+      }
+
       // Connect socket
       const token = localStorage.getItem('token') || sessionStorage.getItem('token');
       socketService.connect(token);
@@ -174,7 +197,40 @@ const SessionRoomPage = () => {
   const handleEndSession = () => {
     if (window.confirm('Are you sure you want to end this session?')) {
       cleanup();
-      navigate('/bookings');
+      setSessionEnded(true);
+    }
+  };
+
+  const handlePaymentProofUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setPaymentProof(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleMarkPaid = async () => {
+    setPaymentSubmitting(true);
+    try {
+      await bookingService.markPaymentDone(bookingId, paymentProof);
+      setPaymentDone(true);
+      setBooking(prev => ({ ...prev, status: 'payment_pending', paymentStatus: 'payment_pending' }));
+    } catch (e) {
+      alert('Failed to submit payment. Please try again.');
+    } finally {
+      setPaymentSubmitting(false);
+    }
+  };
+
+  const handleConfirmPayment = async () => {
+    setConfirmingPayment(true);
+    try {
+      await bookingService.confirmPayment(bookingId);
+      setBooking(prev => ({ ...prev, status: 'completed', paymentStatus: 'paid' }));
+    } catch (e) {
+      alert('Failed to confirm payment.');
+    } finally {
+      setConfirmingPayment(false);
     }
   };
 
@@ -202,6 +258,147 @@ const SessionRoomPage = () => {
   const otherParticipant = user._id === booking.userId._id
     ? booking.expertId
     : booking.userId;
+
+  const isLearner = user._id === booking.userId._id;
+  const isExpert = user._id === booking.expertId._id;
+  const sessionPrice = booking.sessionPrice || expertProfile?.hourlyRate || 0;
+  const qr = expertProfile?.paymentQR;
+
+  // Payment screen shown after session ends
+  if (sessionEnded) {
+    const paymentStatus = booking.paymentStatus;
+    const isPaid = paymentStatus === 'paid' || booking.status === 'completed';
+
+    return (
+      <div className="min-h-screen bg-gray-900 flex flex-col">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center px-4 pt-20 pb-8">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+
+            {/* Header */}
+            <div className="bg-gradient-to-r from-indigo-500 to-cyan-500 p-6 text-white text-center">
+              <div className="text-4xl mb-2">{isPaid ? '✅' : '💳'}</div>
+              <h2 className="text-xl font-bold">
+                {isPaid ? 'Payment Complete' : 'Complete Your Payment'}
+              </h2>
+              <p className="text-indigo-100 text-sm mt-1">
+                Session with {otherParticipant.name}
+              </p>
+            </div>
+
+            <div className="p-6">
+              {/* Expert view */}
+              {isExpert && (
+                <div className="text-center">
+                  {isPaid ? (
+                    <div className="py-6">
+                      <div className="text-5xl mb-3">🎉</div>
+                      <p className="text-green-600 font-bold text-lg">Payment Confirmed!</p>
+                      <p className="text-gray-500 text-sm mt-1">Session marked as completed.</p>
+                    </div>
+                  ) : paymentDone || paymentStatus === 'payment_pending' ? (
+                    <div>
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-5 text-left">
+                        <p className="text-yellow-700 font-semibold text-sm">⏳ Payment Pending Confirmation</p>
+                        <p className="text-yellow-600 text-xs mt-1">{otherParticipant.name} has marked the payment as done.</p>
+                      </div>
+                      {booking.paymentProof && (
+                        <div className="mb-5">
+                          <p className="text-sm font-medium text-gray-700 mb-2">Payment Proof:</p>
+                          <img src={booking.paymentProof} alt="Payment proof" className="w-full rounded-xl border border-gray-200 object-contain max-h-48" />
+                        </div>
+                      )}
+                      <button onClick={handleConfirmPayment} disabled={confirmingPayment}
+                        className="w-full bg-green-500 text-white py-3 rounded-xl font-bold hover:bg-green-600 transition-colors disabled:opacity-60">
+                        {confirmingPayment ? 'Confirming...' : '✅ Confirm Payment Received'}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="py-4">
+                      <p className="text-gray-500 text-sm">Waiting for {otherParticipant.name} to complete the payment...</p>
+                      <div className="mt-4 w-8 h-8 border-4 border-indigo-200 border-t-indigo-500 rounded-full animate-spin mx-auto" />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Learner view */}
+              {isLearner && (
+                <div>
+                  {isPaid ? (
+                    <div className="text-center py-6">
+                      <div className="text-5xl mb-3">🎉</div>
+                      <p className="text-green-600 font-bold text-lg">Payment Confirmed!</p>
+                      <p className="text-gray-500 text-sm mt-1">Thank you. Session is now complete.</p>
+                    </div>
+                  ) : paymentDone || paymentStatus === 'payment_pending' ? (
+                    <div className="text-center py-6">
+                      <div className="text-5xl mb-3">⏳</div>
+                      <p className="text-yellow-600 font-bold text-lg">Waiting for Expert Confirmation</p>
+                      <p className="text-gray-500 text-sm mt-2">The expert will confirm your payment shortly.</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Amount */}
+                      {sessionPrice > 0 && (
+                        <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-5 flex justify-between items-center">
+                          <span className="text-gray-600 text-sm font-medium">Session Fee</span>
+                          <span className="text-indigo-600 font-bold text-lg">${sessionPrice}</span>
+                        </div>
+                      )}
+
+                      {/* QR Code */}
+                      {qr?.image ? (
+                        <div className="text-center mb-5">
+                          <div className="inline-block bg-white border-2 border-indigo-200 rounded-2xl p-4 shadow-sm">
+                            <img src={qr.image} alt="Payment QR" className="w-48 h-48 object-contain mx-auto" />
+                          </div>
+                          {qr.platform && (
+                            <div className="mt-2 inline-flex items-center gap-1.5 bg-green-50 text-green-700 text-xs font-semibold px-3 py-1 rounded-full border border-green-200">
+                              📱 {qr.platform}
+                              {qr.accountName && ` — ${qr.accountName}`}
+                            </div>
+                          )}
+                          <p className="text-gray-500 text-xs mt-3">Scan this QR code using your mobile wallet to complete the payment</p>
+                        </div>
+                      ) : (
+                        <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-center mb-5">
+                          <p className="text-gray-400 text-sm">Expert hasn't set up a payment QR yet.</p>
+                          <p className="text-gray-400 text-xs mt-1">Please arrange payment directly.</p>
+                        </div>
+                      )}
+
+                      {/* Payment proof upload */}
+                      <div className="mb-5">
+                        <p className="text-sm font-medium text-gray-700 mb-2">Upload Payment Screenshot <span className="text-gray-400 font-normal">(optional)</span></p>
+                        <div onClick={() => paymentProofRef.current?.click()}
+                          className="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center cursor-pointer hover:border-indigo-300 transition-colors">
+                          {paymentProof
+                            ? <img src={paymentProof} alt="proof" className="max-h-32 mx-auto rounded-lg object-contain" />
+                            : <p className="text-gray-400 text-sm">📎 Click to upload screenshot</p>}
+                        </div>
+                        <input ref={paymentProofRef} type="file" accept="image/*" onChange={handlePaymentProofUpload} className="hidden" />
+                      </div>
+
+                      <button onClick={handleMarkPaid} disabled={paymentSubmitting}
+                        className="w-full bg-gradient-to-r from-indigo-500 to-cyan-500 text-white py-3 rounded-xl font-bold hover:opacity-90 transition-opacity disabled:opacity-60 text-sm">
+                        {paymentSubmitting ? 'Submitting...' : '✅ I Have Paid'}
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+
+              <Link to="/bookings" className="block text-center text-sm text-gray-400 hover:text-indigo-500 mt-4 transition-colors">
+                Back to Bookings
+              </Link>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
