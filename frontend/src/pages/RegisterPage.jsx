@@ -31,9 +31,16 @@ const RegisterPage = () => {
     setDocNames(prev => ({ ...prev, [key]: file.name }));
   };
 
+  const isGmail = (email) => /^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(email.trim());
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (!isGmail(formData.email)) {
+      setError('Only Gmail addresses are allowed (e.g. yourname@gmail.com).');
+      return;
+    }
 
     if (formData.role === 'expert') {
       if (!documents.resume || !documents.certificate || !documents.experienceProof) {
@@ -101,9 +108,14 @@ const RegisterPage = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
               <input
                 type="email" name="email" value={formData.email} onChange={handleChange} required
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-400 focus:border-transparent outline-none transition bg-white/80 text-sm"
-                placeholder="you@example.com"
+                className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-400 focus:border-transparent outline-none transition bg-white/80 text-sm ${
+                  formData.email && !/^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(formData.email.trim())
+                    ? 'border-red-300 bg-red-50/50'
+                    : 'border-gray-200'
+                }`}
+                placeholder="yourname@gmail.com"
               />
+
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>

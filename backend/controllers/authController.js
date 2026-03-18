@@ -31,6 +31,11 @@ const register = async (req, res) => {
       return res.status(400).json({ message: 'Please provide name, email, and password' });
     }
 
+    // Gmail-only validation
+    if (!/^[a-zA-Z0-9._%+-]+@gmail\.com$/i.test(email.trim())) {
+      return res.status(400).json({ message: 'Only Gmail addresses are allowed.' });
+    }
+
     // Check if user already exists
     const userExists = await User.findOne({ email });
     if (userExists) {
@@ -86,6 +91,11 @@ const login = async (req, res) => {
     if (!email || !password) {
       console.log('❌ Missing email or password');
       return res.status(400).json({ message: 'Please provide email and password' });
+    }
+
+    // Gmail-only validation
+    if (!/^[a-zA-Z0-9._%+-]+@gmail\.com$/i.test(email.trim())) {
+      return res.status(400).json({ message: 'Only Gmail addresses are allowed.' });
     }
 
     // Find user by email (include password for comparison)

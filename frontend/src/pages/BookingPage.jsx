@@ -51,6 +51,14 @@ const BookingPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    // Client-side date guard
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const maxDate = new Date(today); maxDate.setMonth(maxDate.getMonth() + 1);
+    const chosen = new Date(formData.date);
+    if (chosen < today) { setError('Booking date cannot be in the past.'); return; }
+    if (chosen > maxDate) { setError('Booking date cannot be more than 1 month from today.'); return; }
+
     setSubmitting(true);
 
     try {
@@ -120,20 +128,31 @@ const BookingPage = () => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Date
-              </label>
-              <input
-                type="date"
-                name="date"
-                value={formData.date}
-                onChange={handleChange}
-                required
-                min={new Date().toISOString().split('T')[0]}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-              />
-            </div>
+            {(() => {
+              const today = new Date();
+              const maxDate = new Date(today);
+              maxDate.setMonth(maxDate.getMonth() + 1);
+              const minStr = today.toISOString().split('T')[0];
+              const maxStr = maxDate.toISOString().split('T')[0];
+              return (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Date
+                  </label>
+                  <input
+                    type="date"
+                    name="date"
+                    value={formData.date}
+                    onChange={handleChange}
+                    required
+                    min={minStr}
+                    max={maxStr}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">You can only book within the next 30 days.</p>
+                </div>
+              );
+            })()}
 
             <div className="grid grid-cols-2 gap-4">
               <div>

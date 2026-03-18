@@ -11,6 +11,17 @@ const createBooking = async (req, res) => {
   try {
     const { expertId, date, startTime, endTime, topic, notes } = req.body;
 
+    // Date range validation — today to +1 month only
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const maxDate = new Date(today); maxDate.setMonth(maxDate.getMonth() + 1);
+    const bookingDate = new Date(date);
+    if (bookingDate < today) {
+      return res.status(400).json({ message: 'Booking date cannot be in the past.' });
+    }
+    if (bookingDate > maxDate) {
+      return res.status(400).json({ message: 'Booking date cannot be more than 1 month from today.' });
+    }
+
     // Check if expert exists
     const expert = await User.findOne({ _id: expertId, role: 'expert' });
     if (!expert) {

@@ -312,7 +312,11 @@ const UserDashboardPage = () => {
               {[{ label: 'Name', name: 'name', type: 'text' }, { label: 'Phone', name: 'phone', type: 'tel' }].map(f => (
                 <div key={f.name}>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{f.label}</label>
-                  <input type={f.type} value={form[f.name]} onChange={e => setForm(p => ({ ...p, [f.name]: e.target.value }))}
+                  <input type={f.type} value={form[f.name]}
+                    onChange={e => {
+                      const val = f.name === 'phone' ? e.target.value.replace(/\D/g, '') : e.target.value;
+                      setForm(p => ({ ...p, [f.name]: val }));
+                    }}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none text-sm" />
                 </div>
               ))}
